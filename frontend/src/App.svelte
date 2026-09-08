@@ -31,7 +31,6 @@
   let isPlaying = false;
   
   // Video Player Options
-  let selectedAudio = 'sub'; // 'sub', 'dub'
   let selectedServer = 'vidsrc'; 
   let selectedSubtitle = 'id'; // Default Indonesian
 
@@ -47,9 +46,9 @@
     { code: 'ar', name: '🇸🇦 Arabic' }
   ];
 
-  $: videoSource = getIframeSource(activeVideo, selectedServer, selectedAudio, selectedSubtitle);
+  $: videoSource = getIframeSource(activeVideo, selectedServer, selectedSubtitle);
 
-  function getIframeSource(video, server, audio, subtitle) {
+  function getIframeSource(video, server, subtitle) {
     if (!video) return '';
     const imdb = video.imdb;
     const type = video.type || 'tv';
@@ -622,13 +621,6 @@
 
               <!-- Video Options (Sub/Dub, Lang & Server) -->
               <div class="player-options-box">
-                <div class="option-row">
-                  <span class="option-label">Audio:</span>
-                  <div class="toggle-pills">
-                    <button class:active={selectedAudio === 'sub'} on:click={() => selectedAudio = 'sub'}>🇯🇵 Sub</button>
-                    <button class:active={selectedAudio === 'dub'} on:click={() => selectedAudio = 'dub'}>🇺🇸 Dub</button>
-                  </div>
-                </div>
                 <div class="option-row">
                   <span class="option-label">Subtitle:</span>
                   <select class="server-select" bind:value={selectedSubtitle}>
