@@ -60,8 +60,15 @@ pm2 start ecosystem.config.js
 
 Untuk memantau atau mengontrol *daemon*:
 ```bash
+# Melihat log aplikasi secara langsung (real-time)
 pm2 logs StreamEly
+
+# Menyalakan ulang aplikasi
 pm2 restart StreamEly
+
+# Menghentikan aplikasi
 pm2 stop StreamEly
+
+# Menghapus aplikasi dari sistem PM2
 pm2 delete StreamEly
 ```
