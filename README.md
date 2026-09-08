@@ -58,9 +58,10 @@ npm install -g pm2
 pm2 start ecosystem.config.js
 ```
 
-To monitor or terminate the daemon:
+To monitor or manage the daemon:
 ```bash
 pm2 logs StreamEly
+pm2 restart StreamEly
 pm2 stop StreamEly
 pm2 delete StreamEly
 ```
