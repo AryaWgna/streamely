@@ -92,9 +92,82 @@ async function populateDB() {
     }
   }
 
+  // 3. Fetch Massive Horror Movies dynamically
+  console.log("🚀 Fetching Massive Horror Movies from OMDB...");
+  const queries = ['horror', 'scary', 'ghost', 'zombie', 'demon', 'vampire', 'slasher', 'paranormal'];
+  for (const q of queries) {
+    for (let page = 1; page <= 3; page++) { // 3 pages per query = ~240 horror movies total
+      try {
+        const res = await fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=${q}&type=movie&page=${page}`);
+        const data = await res.json();
+        if (data.Search) {
+          const promises = data.Search.map((m: any) => fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${m.imdbID}`).then(r => r.json()).catch(() => null));
+          const results = await Promise.all(promises);
+          results.forEach(res => {
+            if (res && res.Response === "True" && res.Poster && res.Poster !== 'N/A') {
+              let genres = res.Genre?.split(', ') || ['Horror'];
+              if (!genres.includes('Horror')) genres.push('Horror'); // Force Horror genre
+              
+              animeMovies.push({
+                id: res.imdbID,
+                name: res.Title,
+                image: res.Poster,
+                banner: res.Poster,
+                genres: genres,
+                rating: parseFloat(res.imdbRating) || 0,
+                summary: res.Plot || 'Deskripsi tidak tersedia.',
+                imdb: res.imdbID,
+                year: parseInt(res.Year) || 0,
+                type: 'movie'
+              });
+            }
+          });
+        }
+        await new Promise(r => setTimeout(r, 300));
+      } catch(e) {}
+    }
+  }
+
+  // 4. Fetch Massive Indonesian Movies dynamically
+  console.log("🚀 Fetching Massive Indonesian Movies from OMDB...");
+  const indoQueries = ['pengabdi', 'kuntilanak', 'pocong', 'warkop', 'dilan', 'laskar', 'gundala', 'srimulat', 'habibie', 'merantau', 'raid', 'jailangkung', 'kkn', 'tuyul', 'suzzanna'];
+  for (const q of indoQueries) {
+    for (let page = 1; page <= 2; page++) {
+      try {
+        const res = await fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=${q}&type=movie&page=${page}`);
+        const data = await res.json();
+        if (data.Search) {
+          const promises = data.Search.map((m: any) => fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${m.imdbID}`).then(r => r.json()).catch(() => null));
+          const results = await Promise.all(promises);
+          results.forEach(res => {
+            if (res && res.Response === "True" && res.Poster && res.Poster !== 'N/A') {
+              let genres = res.Genre?.split(', ') || ['Drama'];
+              if (!genres.includes('Indonesian')) genres.push('Indonesian'); // Force Indonesian tag
+              
+              animeMovies.push({
+                id: res.imdbID,
+                name: res.Title,
+                image: res.Poster,
+                banner: res.Poster,
+                genres: genres,
+                rating: parseFloat(res.imdbRating) || 0,
+                summary: res.Plot || 'Deskripsi tidak tersedia.',
+                imdb: res.imdbID,
+                year: parseInt(res.Year) || 0,
+                type: 'movie'
+              });
+            }
+          });
+        }
+        await new Promise(r => setTimeout(r, 300));
+      } catch(e) {}
+    }
+  }
+
+  console.log(`✅ EXCELLENT! Database populated successfully with ${tempDB.length} shows and ${animeMovies.length} movies!`);
+
   showsDB = tempDB;
   dbReady = true;
-  console.log(`✅ EXCELLENT! Database populated successfully with ${showsDB.length} high-quality shows!`);
 }
 populateDB();
 
@@ -161,12 +234,26 @@ const app = new Elysia()
           director: data.Director && data.Director !== 'N/A' ? data.Director : 'Tidak diketahui'
         };
       } else {
-        const res = await fetch(`${TVMAZE_API}/shows/${query.id}?embed=cast&embed=crew`);
+        const res = await fetch(`${TVMAZE_API}/shows/${query.id}?embed=cast&embed=crew&embed=episodes`);
         const data = await res.json();
         
         let cast = data._embedded?.cast?.slice(0, 5).map((c: any) => c.person.name).join(', ') || 'Tidak diketahui';
         let creator = data._embedded?.crew?.filter((c: any) => c.type === 'Creator' || c.type === 'Executive Producer')
                           .slice(0, 3).map((c: any) => c.person.name).join(', ') || 'Tidak diketahui';
+        
+        // Extract seasons and episodes from TVmaze
+        let seasonsData = {};
+        if (data._embedded?.episodes) {
+          data._embedded.episodes.forEach((ep: any) => {
+            if (!seasonsData[ep.season]) {
+              seasonsData[ep.season] = [];
+            }
+            seasonsData[ep.season].push({
+              number: ep.number,
+              name: ep.name
+            });
+          });
+        }
         
         // OMDB Fallback Hack for missing TVmaze data
         if ((cast === 'Tidak diketahui' || creator === 'Tidak diketahui' || cast.length < 3) && query.imdb && query.imdb !== 'null') {
@@ -188,7 +275,8 @@ const app = new Elysia()
         return {
           cast: cast.length > 2 ? cast : 'Tidak diketahui',
           director: creator.length > 2 ? creator : 'Tidak diketahui',
-          network: data.network?.name || data.webChannel?.name || 'Tidak diketahui'
+          network: data.network?.name || data.webChannel?.name || 'Tidak diketahui',
+          seasons: seasonsData
         };
       }
     } catch (e) {
@@ -207,30 +295,35 @@ const app = new Elysia()
       return { error: "Sedang mengunduh 15.000+ data film ke dalam sistem, mohon tunggu beberapa detik lalu coba lagi... 🚀" };
     }
 
+    const allData = [...showsDB, ...animeMovies];
     const sortByRating = (arr: any[]) => [...arr].sort((a, b) => (b.rating || 0) - (a.rating || 0));
 
     // Create massive categories (up to 1000 items each!)
-    const animeSeries = sortByRating(showsDB.filter(s => s.genres.includes("Anime")));
-    const cartoonSeries = sortByRating(showsDB.filter(s => 
+    const animeSeries = sortByRating(allData.filter(s => s.genres.includes("Anime")));
+    const cartoonSeries = sortByRating(allData.filter(s => 
       s.genres.includes("Children") || s.genres.includes("Family") || (s.genres.includes("Animation") && !s.genres.includes("Anime"))
     ));
-    const realityShows = sortByRating(showsDB.filter(s => s.genres.includes("Reality") || s.genres.includes("DIY") || s.genres.includes("Food") || s.genres.includes("Travel")));
-    const trending = sortByRating(showsDB); // Highest rated of ALL TIME
-    const actionSeries = sortByRating(showsDB.filter(s => s.genres.includes("Action") || s.genres.includes("Adventure")));
-    const comedySeries = sortByRating(showsDB.filter(s => s.genres.includes("Comedy")));
-    const scifiHorror = sortByRating(showsDB.filter(s => s.genres.includes("Science-Fiction") || s.genres.includes("Horror")));
-    const romanceDrama = sortByRating(showsDB.filter(s => s.genres.includes("Romance") || s.genres.includes("Drama")));
+    const realityShows = sortByRating(allData.filter(s => s.genres.includes("Reality") || s.genres.includes("DIY") || s.genres.includes("Food") || s.genres.includes("Travel")));
+    const trending = sortByRating(allData); // Highest rated of ALL TIME
+    const actionSeries = sortByRating(allData.filter(s => s.genres.includes("Action") || s.genres.includes("Adventure")));
+    const comedySeries = sortByRating(allData.filter(s => s.genres.includes("Comedy")));
+    
+    const horror = sortByRating(allData.filter(s => s.genres.includes("Horror") || s.genres.includes("Thriller")));
+    const scifi = sortByRating(allData.filter(s => s.genres.includes("Science-Fiction")));
+    const romanceDrama = sortByRating(allData.filter(s => s.genres.includes("Romance") || s.genres.includes("Drama")));
+    const indonesian = sortByRating(allData.filter(s => s.genres.includes("Indonesian")));
 
     return {
       hero: trending[Math.floor(Math.random() * 20)], // Random hero from top 20
       categories: [
         { title: "Trending Now", data: trending.slice(0, 1000) },
-        { title: "Anime Masterpieces", data: animeMovies },
-        { title: "Anime Series", data: animeSeries.slice(0, 1000) },
-        { title: "Family & Animation", data: cartoonSeries.slice(0, 1000) },
+        { title: "Sinema Indonesia", data: indonesian.slice(0, 1000) },
+        { title: "Horror & Thriller", data: horror.slice(0, 1000) },
+        { title: "Anime & Animation", data: animeSeries.slice(0, 1000) },
+        { title: "Family & Kids", data: cartoonSeries.slice(0, 1000) },
         { title: "Reality & Lifestyle", data: realityShows.slice(0, 1000) },
         { title: "Action & Adventure", data: actionSeries.slice(0, 1000) },
-        { title: "Sci-Fi & Horror", data: scifiHorror.slice(0, 1000) },
+        { title: "Science Fiction", data: scifi.slice(0, 1000) },
         { title: "Romance & Drama", data: romanceDrama.slice(0, 1000) },
         { title: "Comedy", data: comedySeries.slice(0, 1000) }
       ]

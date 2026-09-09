@@ -34,6 +34,7 @@
   let selectedServer = 'vidsrc'; 
   let selectedSubtitle = 'id'; // Default Indonesian
 
+
   const subtitleLanguages = [
     { code: 'id', name: '🇮🇩 Indonesia' },
     { code: 'en', name: '🇺🇸 English' },
@@ -43,7 +44,8 @@
     { code: 'fr', name: '🇫🇷 French' },
     { code: 'de', name: '🇩🇪 German' },
     { code: 'th', name: '🇹🇭 Thai' },
-    { code: 'ar', name: '🇸🇦 Arabic' }
+    { code: 'ar', name: '🇸🇦 Arabic' },
+    { code: 'none', name: '🚫 No Subtitles (Raw)' }
   ];
 
   $: videoSource = getIframeSource(activeVideo, selectedServer, selectedSubtitle);
@@ -204,7 +206,12 @@
     }
   }
 
+  let previousView = 'home';
+
   async function openModal(item) {
+    if (currentView !== 'watch') previousView = currentView;
+    currentView = 'watch';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     activeVideo = item;
     activeDetails = null; // Reset to trigger loading skeleton
     isPlaying = false; // Do not auto-play immediately
@@ -252,6 +259,7 @@
   }
 
   function closeVideo() {
+    currentView = previousView;
     activeVideo = null;
     activeDetails = null;
     similarShows = [];
@@ -382,7 +390,7 @@
             <div class="carousel" use:useHorizontalScroll>
               {#each recommendations as item}
                 <div class="card" on:click={() => openModal(item)}>
-                  <img src={item.image} alt={item.name} loading="lazy" />
+                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
                   <div class="card-overlay">
                     <span class="card-rating">{@html StarIcon} {item.rating}</span>
                     <h4>{item.name}</h4>
@@ -406,7 +414,7 @@
             <div class="carousel" use:useHorizontalScroll>
               {#each watchHistory as item}
                 <div class="card" on:click={() => openModal(item)}>
-                  <img src={item.image} alt={item.name} loading="lazy" />
+                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
                   <div class="card-overlay">
                     <h4>{item.name}</h4>
                     <button class="card-wl-btn {isInWatchlist(item.id) ? 'active' : ''}" on:click={(e) => toggleWatchlist(item, e)} title="Watchlist">
@@ -426,7 +434,7 @@
             <div class="carousel" use:useHorizontalScroll>
               {#each category.data as item}
                 <div class="card" on:click={() => openModal(item)}>
-                  <img src={item.image} alt={item.name} loading="lazy" />
+                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
                   <div class="card-overlay">
                     <span class="card-rating">{@html StarIcon} {item.rating}</span>
                     <h4>{item.name}</h4>
@@ -486,7 +494,7 @@
           <div class="grid-layout">
             {#each exploreData as item}
               <div class="card" on:click={() => openModal(item)}>
-                <img src={item.image} alt={item.name} loading="lazy" />
+                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
                 <div class="card-overlay">
                   <span class="card-rating">{@html StarIcon} {item.rating}</span>
                   <h4>{item.name}</h4>
@@ -521,7 +529,7 @@
           <div class="grid-layout">
             {#each watchlist as item}
               <div class="card" on:click={() => openModal(item)}>
-                <img src={item.image} alt={item.name} loading="lazy" />
+                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
                 <div class="card-overlay">
                   <span class="card-rating">{@html StarIcon} {item.rating || 'N/A'}</span>
                   <h4>{item.name}</h4>
@@ -551,7 +559,7 @@
           <div class="grid-layout">
             {#each searchResults as item}
               <div class="card" on:click={() => openModal(item)}>
-                <img src={item.image} alt={item.name} loading="lazy" />
+                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
                 <div class="card-overlay">
                   <span class="card-rating">{@html StarIcon} {item.rating || 'N/A'}</span>
                   <h4>{item.name}</h4>
@@ -564,27 +572,29 @@
           </div>
         {/if}
       </div>
-    {/if}
-  {/if}
 
-  <!-- VIDEO MODAL -->
-  {#if activeVideo}
-    <div class="modal-backdrop" on:click={closeVideo}>
-      <div class="modal-content" on:click|stopPropagation>
-        <button class="close-btn" on:click={closeVideo}>{@html CloseIcon}</button>
-        <div class="video-wrapper">
-          {#if isPlaying}
-            <iframe src={videoSource} frameborder="0" allowfullscreen></iframe>
-          {:else}
-            <div class="modal-cover" style="background-image: url('{activeVideo.banner || activeVideo.image}')">
-              <div class="modal-cover-overlay"></div>
-              <button class="huge-play-btn" on:click={startWatching}>
-                {@html PlayIcon}
-              </button>
-            </div>
-          {/if}
+    <!-- WATCH VIEW -->
+    {:else if currentView === 'watch' && activeVideo}
+      <div class="watch-page-container">
+        <button class="back-btn" on:click={closeVideo}>
+          <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"></line><polyline points="12 19 5 12 12 5"></polyline></svg>
+          Back
+        </button>
+        <div class="watch-page-video">
+          <div class="video-wrapper">
+            {#if isPlaying}
+              <iframe src={videoSource} frameborder="0" allowfullscreen></iframe>
+            {:else}
+              <div class="modal-cover" style="background-image: url('{activeVideo.banner || activeVideo.image}')">
+                <div class="modal-cover-overlay"></div>
+                <button class="huge-play-btn" on:click={startWatching}>
+                  {@html PlayIcon}
+                </button>
+              </div>
+            {/if}
+          </div>
         </div>
-        <div class="modal-details">
+        <div class="modal-details watch-page-details">
           <div class="modal-header-row">
             <div>
               <h2>{activeVideo.name}</h2>
@@ -619,8 +629,9 @@
               {/if}
               <p><span>Genres:</span> {activeVideo.genres.join(', ')}</p>
 
-              <!-- Video Options (Sub/Dub, Lang & Server) -->
+              <!-- Video Options (Lang & Server) -->
               <div class="player-options-box">
+
                 <div class="option-row">
                   <span class="option-label">Subtitle:</span>
                   <select class="server-select" bind:value={selectedSubtitle}>
@@ -649,7 +660,7 @@
               <div class="similar-grid">
                 {#each similarShows as item}
                   <div class="card similar-card" on:click={() => openModal(item)}>
-                    <img src={item.image} alt={item.name} loading="lazy" />
+                    <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
                     <div class="card-overlay">
                       <span class="card-rating">{@html StarIcon} {item.rating}</span>
                       <h4>{item.name}</h4>
@@ -661,8 +672,9 @@
           {/if}
         </div>
       </div>
-    </div>
+    {/if}
   {/if}
+
 </main>
 
 <script context="module">
@@ -1040,48 +1052,49 @@
   .pagination button:hover:not(:disabled) { background: #27272a; border-color: #3f3f46; }
   .pagination button:disabled { opacity: 0.4; cursor: not-allowed; }
 
-  /* Modal */
-  .modal-backdrop {
-    position: fixed;
-    top: 0; left: 0; right: 0; bottom: 0;
-    background: rgba(0,0,0,0.9);
-    backdrop-filter: blur(10px);
-    z-index: 9999;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
-  .modal-content {
-    background: #09090b;
-    width: 90%;
-    max-width: 960px;
-    max-height: 90vh;
-    border-radius: 12px;
-    overflow-y: auto;
+  /* Watch Page */
+  .watch-page-container {
+    width: 100%;
+    min-height: 100vh;
+    background: #000;
     position: relative;
+    padding-top: 100px;
+    padding-bottom: 60px;
+    z-index: 10;
+  }
+  .watch-page-video {
+    width: 100%;
+    max-width: 1100px;
+    margin: 40px auto 0 auto;
+    border-radius: 12px;
+    overflow: hidden;
     box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8);
     border: 1px solid #27272a;
+    position: relative;
+    z-index: 5;
   }
-  .modal-content::-webkit-scrollbar { width: 8px; }
-  .modal-content::-webkit-scrollbar-track { background: transparent; }
-  .modal-content::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
-  .modal-content::-webkit-scrollbar-thumb:hover { background: #52525b; }
+  .watch-page-details {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 32px 4%;
+  }
 
-  .close-btn {
+  .back-btn {
     position: absolute;
-    top: 24px; right: 24px;
-    background: rgba(0,0,0,0.5);
+    top: 80px; left: 4%;
+    background: rgba(0,0,0,0.6);
     color: white;
-    border: none;
-    width: 44px; height: 44px;
-    border-radius: 50%;
-    display: flex; justify-content: center; align-items: center;
+    border: 1px solid rgba(255,255,255,0.1);
+    padding: 10px 20px;
+    border-radius: 8px;
+    display: flex; gap: 8px; align-items: center;
     cursor: pointer;
     z-index: 20;
-    backdrop-filter: blur(4px);
-    transition: background 0.2s;
+    backdrop-filter: blur(8px);
+    font-size: 1rem; font-weight: 600;
+    transition: all 0.2s;
   }
-  .close-btn:hover { background: rgba(255,255,255,0.1); }
+  .back-btn:hover { background: rgba(255,255,255,0.1); transform: translateX(-4px); }
   
   .video-wrapper {
     position: relative;
@@ -1151,6 +1164,9 @@
   .server-select {
     background: #000; color: #e4e4e7; border: 1px solid #27272a; padding: 6px 12px; border-radius: 6px;
     font-family: inherit; font-size: 0.85rem; outline: none; cursor: pointer; min-width: 150px;
+  }
+  .num-input {
+    min-width: 60px; text-align: center;
   }
   
   .similar-shows-section { margin-top: 24px; border-top: 1px solid #27272a; padding-top: 24px; }
