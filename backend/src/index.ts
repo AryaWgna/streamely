@@ -19,7 +19,7 @@ const animeMovieIDs = [
 ];
 
 async function populateDB() {
-  console.log("🚀 Starting MASSIVE Database Extraction...");
+  console.log("Starting MASSIVE Database Extraction...");
   
   // 1. Fetch Anime Movies from OMDB dynamically
   console.log(`Fetching ${animeMovieIDs.length} Anime Movies from OMDB...`);
