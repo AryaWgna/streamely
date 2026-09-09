@@ -31,37 +31,29 @@
   let isPlaying = false;
   
   // Video Player Options
-  let selectedServer = 'vidsrc'; 
-  let selectedSubtitle = 'id'; // Default Indonesian
+  let selectedServer = 'vidsrcin'; 
 
+  $: videoSource = getIframeSource(activeVideo, selectedServer);
 
-  const subtitleLanguages = [
-    { code: 'id', name: 'Indonesia' },
-    { code: 'en', name: 'English' },
-    { code: 'ja', name: 'Japanese' },
-    { code: 'ko', name: 'Korean' },
-    { code: 'es', name: 'Spanish' },
-    { code: 'fr', name: 'French' },
-    { code: 'de', name: 'German' },
-    { code: 'th', name: 'Thai' },
-    { code: 'ar', name: 'Arabic' },
-    { code: 'none', name: 'No Subtitles (Raw)' }
-  ];
-
-  $: videoSource = getIframeSource(activeVideo, selectedServer, selectedSubtitle);
-
-  function getIframeSource(video, server, subtitle) {
+  function getIframeSource(video, server) {
     if (!video) return '';
     const imdb = video.imdb;
     const type = video.type || 'tv';
     
-    if (server === 'vidlink') {
-      return `https://vidlink.pro/${type}/${imdb}`;
-    } else if (server === 'vidsrcto') {
-      return `https://vidsrc.to/embed/${type}/${imdb}`;
+    if (server === 'multiembed') {
+      return `https://multiembed.mov/?video_id=${imdb}&tmdb=0`;
+    } else if (server === '2embed') {
+      if (type === 'movie') {
+        return `https://www.2embed.cc/embed/${imdb}`;
+      } else {
+        return `https://www.2embed.cc/embedtv/${imdb}`;
+      }
     } else {
-      // Vidsrc supports ds_lang parameter to set default subtitle!
-      return `https://vidsrc.me/embed/${type}?imdb=${imdb}&ds_lang=${subtitle}`;
+      if (type === 'movie') {
+        return `https://vidsrc.in/embed/movie/${imdb}`;
+      } else {
+        return `https://vidsrc.in/embed/tv/${imdb}`;
+      }
     }
   }
 
@@ -215,6 +207,8 @@
     activeVideo = item;
     activeDetails = null; // Reset to trigger loading skeleton
     isPlaying = false; // Do not auto-play immediately
+    
+
     
     // Compute Similar Shows dynamically
     const allShows = [];
@@ -603,13 +597,20 @@
                 <span class="year">{activeVideo.year || ''}</span>
               </div>
             </div>
-            <button class="watchlist-btn outlined" on:click={() => toggleWatchlist(activeVideo)}>
-              {#if isInWatchlist(activeVideo.id)}
-                {@html CheckIcon} <span>Remove</span>
-              {:else}
-                {@html PlusIcon} <span>Add to List</span>
-              {/if}
-            </button>
+            <div style="display: flex; gap: 12px; align-items: center;">
+              <select class="server-select" bind:value={selectedServer} style="margin: 0; padding: 10px 16px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); color: #fff; border-radius: 8px; cursor: pointer; outline: none; font-size: 0.9rem; font-weight: 500; height: 100%;">
+                <option value="vidsrcin" style="background: #18181b; color: white;">Server 1 (VidSrc)</option>
+                <option value="multiembed" style="background: #18181b; color: white;">Server 2 (MultiEmbed)</option>
+                <option value="2embed" style="background: #18181b; color: white;">Server 3 (2Embed)</option>
+              </select>
+              <button class="watchlist-btn outlined" on:click={() => toggleWatchlist(activeVideo)}>
+                {#if isInWatchlist(activeVideo.id)}
+                  {@html CheckIcon} <span>Remove</span>
+                {:else}
+                  {@html PlusIcon} <span>Add to List</span>
+                {/if}
+              </button>
+            </div>
           </div>
           
           <div class="modal-split">
@@ -629,26 +630,6 @@
               {/if}
               <p><span>Genres:</span> {activeVideo.genres.join(', ')}</p>
 
-              <!-- Video Options (Lang & Server) -->
-              <div class="player-options-box">
-
-                <div class="option-row">
-                  <span class="option-label">Subtitle:</span>
-                  <select class="server-select" bind:value={selectedSubtitle}>
-                    {#each subtitleLanguages as lang}
-                      <option value={lang.code}>{lang.name}</option>
-                    {/each}
-                  </select>
-                </div>
-                <div class="option-row">
-                  <span class="option-label">Server:</span>
-                  <select class="server-select" bind:value={selectedServer}>
-                    <option value="vidsrc">Server 1 (Default - VIP)</option>
-                    <option value="vidlink">Server 2 (Fast Alternate)</option>
-                    <option value="vidsrcto">Server 3 (Multi-Sub)</option>
-                  </select>
-                </div>
-              </div>
 
             </div>
           </div>
