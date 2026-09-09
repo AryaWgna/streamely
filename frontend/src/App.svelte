@@ -36,16 +36,16 @@
 
 
   const subtitleLanguages = [
-    { code: 'id', name: '🇮🇩 Indonesia' },
-    { code: 'en', name: '🇺🇸 English' },
-    { code: 'ja', name: '🇯🇵 Japanese' },
-    { code: 'ko', name: '🇰🇷 Korean' },
-    { code: 'es', name: '🇪🇸 Spanish' },
-    { code: 'fr', name: '🇫🇷 French' },
-    { code: 'de', name: '🇩🇪 German' },
-    { code: 'th', name: '🇹🇭 Thai' },
-    { code: 'ar', name: '🇸🇦 Arabic' },
-    { code: 'none', name: '🚫 No Subtitles (Raw)' }
+    { code: 'id', name: 'Indonesia' },
+    { code: 'en', name: 'English' },
+    { code: 'ja', name: 'Japanese' },
+    { code: 'ko', name: 'Korean' },
+    { code: 'es', name: 'Spanish' },
+    { code: 'fr', name: 'French' },
+    { code: 'de', name: 'German' },
+    { code: 'th', name: 'Thai' },
+    { code: 'ar', name: 'Arabic' },
+    { code: 'none', name: 'No Subtitles (Raw)' }
   ];
 
   $: videoSource = getIframeSource(activeVideo, selectedServer, selectedSubtitle);

@@ -46,10 +46,10 @@ async function populateDB() {
     });
     await new Promise(r => setTimeout(r, 500)); // Rate limit safety
   }
-  console.log(`✅ Berhasil memuat ${animeMovies.length} Anime Movies spesial!`);
+  console.log(`Berhasil memuat ${animeMovies.length} Anime Movies spesial!`);
 
   // 2. Fetch TV Series (15,000 shows from TVmaze)
-  console.log("🚀 Fetching 15,000+ TV Shows dari TVmaze...");
+  console.log("Fetching 15,000+ TV Shows dari TVmaze...");
   let tempDB: any[] = [];
   const totalPages = 60; 
   const batchSize = 10; 
@@ -93,7 +93,7 @@ async function populateDB() {
   }
 
   // 3. Fetch Massive Horror Movies dynamically
-  console.log("🚀 Fetching Massive Horror Movies from OMDB...");
+  console.log("Fetching Massive Horror Movies from OMDB...");
   const queries = ['horror', 'scary', 'ghost', 'zombie', 'demon', 'vampire', 'slasher', 'paranormal'];
   for (const q of queries) {
     for (let page = 1; page <= 3; page++) { // 3 pages per query = ~240 horror movies total
@@ -129,7 +129,7 @@ async function populateDB() {
   }
 
   // 4. Fetch Massive Indonesian Movies dynamically
-  console.log("🚀 Fetching Massive Indonesian Movies from OMDB...");
+  console.log("Fetching Massive Indonesian Movies from OMDB...");
   const indoQueries = ['pengabdi', 'kuntilanak', 'pocong', 'warkop', 'dilan', 'laskar', 'gundala', 'srimulat', 'habibie', 'merantau', 'raid', 'jailangkung', 'kkn', 'tuyul', 'suzzanna'];
   for (const q of indoQueries) {
     for (let page = 1; page <= 2; page++) {
@@ -164,7 +164,7 @@ async function populateDB() {
     }
   }
 
-  console.log(`✅ EXCELLENT! Database populated successfully with ${tempDB.length} shows and ${animeMovies.length} movies!`);
+  console.log(`Database populated successfully with ${tempDB.length} shows and ${animeMovies.length} movies!`);
 
   showsDB = tempDB;
   dbReady = true;
@@ -362,4 +362,4 @@ const app = new Elysia()
 
   .listen(3000);
 
-console.log(`🚀 Elysia Streaming Backend running at http://${app.server?.hostname}:${app.server?.port}`);
+console.log(`Elysia Streaming Backend running at http://${app.server?.hostname}:${app.server?.port}`);
