@@ -1,18 +1,15 @@
 {
   "name": "streamely-ecosystem",
   "version": "1.0.0",
-  "description": "StreamEly - Enterprise Streaming Platform Monorepo",
+  "description": "StreamEly - Self-hosted VOD Platform",
   "scripts": {
     "start": "concurrently -c \"cyan,magenta,yellow\" -n \"BACKEND,FRONTEND,PROXY\" \"npm run start:backend\" \"npm run start:frontend\" \"npm run start:proxy\"",
-    "start:backend": "cd backend && C:\\Users\\Admin\\.bun\\bin\\bun run src/index.ts",
+    "start:backend": "cd backend && bun run src/index.ts",
     "start:frontend": "cd frontend && npm run dev",
-    "start:proxy": "C:\\Users\\Admin\\.bun\\bin\\bun run proxy.ts",
-    "install:all": "cd backend && C:\\Users\\Admin\\.bun\\bin\\bun install && cd ../frontend && npm install --ignore-scripts"
+    "start:proxy": "bun run proxy.ts",
+    "install:all": "cd backend && bun install && cd ../frontend && npm install --ignore-scripts"
   },
   "devDependencies": {
     "concurrently": "^8.2.2"
-  },
-  "dependencies": {
-    "jimp": "^1.6.1"
   }
 }

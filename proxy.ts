@@ -4,9 +4,9 @@ const PORT = 443;
 const VITE_URL = 'http://localhost:5173';
 const BACKEND_URL = 'http://localhost:3000';
 
-console.log(`🚀 StreamEly Enterprise SECURE Reverse Proxy running on port ${PORT}`);
-console.log(`📡 Route: https://streamely.local/ -> ${VITE_URL}`);
-console.log(`📡 Route: https://streamely.local/api/* -> ${BACKEND_URL}/api/*`);
+console.log(`Reverse proxy running on port ${PORT}`);
+console.log(`Route: https://streamely.local/ -> ${VITE_URL}`);
+console.log(`Route: https://streamely.local/api/* -> ${BACKEND_URL}/api/*`);
 
 // Main HTTPS Reverse Proxy
 Bun.serve({

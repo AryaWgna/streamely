@@ -1,22 +1,21 @@
 const { spawn } = require('child_process');
 
-// Gunakan npm.cmd untuk Windows, atau npm untuk Linux/Mac
 const command = /^win/.test(process.platform) ? 'npm.cmd' : 'npm';
 
-console.log("🚀 Memulai StreamEly Ecosystem lewat PM2 Node Runner...");
+console.log("Starting StreamEly via PM2 runner...");
 
 const child = spawn(command, ['start'], {
   cwd: __dirname,
   stdio: 'inherit',
   shell: true,
-  windowsHide: true // Sembunyikan jendela CMD bawaan Windows!
+  windowsHide: true
 });
 
 child.on('error', (err) => {
-  console.error("Gagal menjalankan aplikasi:", err);
+  console.error("Failed to start application:", err);
 });
 
 child.on('exit', (code) => {
-  console.log(`Aplikasi berhenti dengan kode ${code}`);
+  console.log(`Application exited with code ${code}`);
   process.exit(code);
 });

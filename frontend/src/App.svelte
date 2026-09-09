@@ -300,6 +300,8 @@
   const CheckIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
   const SearchIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>`;
   const StarIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="#facc15" stroke="#facc15" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+
+  const FALLBACK_POSTER = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E';
 </script>
 
 <svelte:head>
@@ -384,7 +386,7 @@
             <div class="carousel" use:useHorizontalScroll>
               {#each recommendations as item}
                 <div class="card" on:click={() => openModal(item)}>
-                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
+                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
                   <div class="card-overlay">
                     <span class="card-rating">{@html StarIcon} {item.rating}</span>
                     <h4>{item.name}</h4>
@@ -408,7 +410,7 @@
             <div class="carousel" use:useHorizontalScroll>
               {#each watchHistory as item}
                 <div class="card" on:click={() => openModal(item)}>
-                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
+                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
                   <div class="card-overlay">
                     <h4>{item.name}</h4>
                     <button class="card-wl-btn {isInWatchlist(item.id) ? 'active' : ''}" on:click={(e) => toggleWatchlist(item, e)} title="Watchlist">
@@ -428,7 +430,7 @@
             <div class="carousel" use:useHorizontalScroll>
               {#each category.data as item}
                 <div class="card" on:click={() => openModal(item)}>
-                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
+                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
                   <div class="card-overlay">
                     <span class="card-rating">{@html StarIcon} {item.rating}</span>
                     <h4>{item.name}</h4>
@@ -488,7 +490,7 @@
           <div class="grid-layout">
             {#each exploreData as item}
               <div class="card" on:click={() => openModal(item)}>
-                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
+                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
                 <div class="card-overlay">
                   <span class="card-rating">{@html StarIcon} {item.rating}</span>
                   <h4>{item.name}</h4>
@@ -523,7 +525,7 @@
           <div class="grid-layout">
             {#each watchlist as item}
               <div class="card" on:click={() => openModal(item)}>
-                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
+                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
                 <div class="card-overlay">
                   <span class="card-rating">{@html StarIcon} {item.rating || 'N/A'}</span>
                   <h4>{item.name}</h4>
@@ -553,7 +555,7 @@
           <div class="grid-layout">
             {#each searchResults as item}
               <div class="card" on:click={() => openModal(item)}>
-                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
+                <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
                 <div class="card-overlay">
                   <span class="card-rating">{@html StarIcon} {item.rating || 'N/A'}</span>
                   <h4>{item.name}</h4>
@@ -641,7 +643,7 @@
               <div class="similar-grid">
                 {#each similarShows as item}
                   <div class="card similar-card" on:click={() => openModal(item)}>
-                    <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = 'data:image/svg+xml;charset=UTF-8,%3Csvg%20width%3D%22210%22%20height%3D%22295%22%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%20210%20295%22%20preserveAspectRatio%3D%22none%22%3E%3Crect%20width%3D%22100%25%22%20height%3D%22100%25%22%20fill%3D%22%23333%22%2F%3E%3Ctext%20x%3D%22105%22%20y%3D%22147%22%20fill%3D%22%23fff%22%20font-family%3D%22sans-serif%22%20font-size%3D%2216%22%20font-weight%3D%22bold%22%20text-anchor%3D%22middle%22%20dominant-baseline%3D%22middle%22%3ENo%20Cover%3C%2Ftext%3E%3C%2Fsvg%3E'} />
+                    <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
                     <div class="card-overlay">
                       <span class="card-rating">{@html StarIcon} {item.rating}</span>
                       <h4>{item.name}</h4>
@@ -658,9 +660,7 @@
 
 </main>
 
-<script context="module">
-  const CloseIcon = `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>`;
-</script>
+
 
 <style>
   :global(body) {

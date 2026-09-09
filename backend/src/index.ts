@@ -1,365 +1,414 @@
 import { Elysia, t } from "elysia";
-import { cors } from '@elysiajs/cors';
+import { cors } from "@elysiajs/cors";
 
 const TVMAZE_API = "https://api.tvmaze.com";
-const OMDB_API_KEY = "thewdb"; // Publicly available testing key
+const OMDB_API_KEY = process.env.OMDB_API_KEY ?? "thewdb";
 
-let showsDB: any[] = [];
-let animeMovies: any[] = [];
+interface Show {
+  id: string | number;
+  name: string;
+  image: string;
+  banner: string;
+  genres: string[];
+  rating: number;
+  summary: string;
+  imdb: string;
+  year: number;
+  type: "movie" | "tv";
+}
+
+interface Episode {
+  number: number;
+  name: string;
+}
+
+interface ShowDetails {
+  cast: string;
+  director: string;
+  network?: string;
+  seasons?: Record<number, Episode[]>;
+}
+
+const showsDB: Show[] = [];
+const moviesDB = new Map<string, Show>();
 let dbReady = false;
 
-// 40+ Iconic Anime Movies IMDB IDs
-const animeMovieIDs = [
-  'tt0245429', 'tt5311514', 'tt5323662', 'tt0119698', 'tt0347149', 'tt0094625', 'tt0095327', 'tt0096283',
-  'tt0156887', 'tt0113568', 'tt9095030', 'tt16428256', 'tt0169858', 'tt0097814', 'tt0092067', 'tt0808506',
-  'tt2140510', 'tt0845928', 'tt11032374', 'tt14308084', 'tt0087544', 'tt0104571', 'tt2013293', 'tt0876563',
-  'tt0983213', 'tt2591814', 'tt1483797', 'tt1474261', 'tt0388473', 'tt0263306', 'tt6587046', 'tt16183464',
-  'tt7958640', 'tt12287010', 'tt7331818', 'tt7232248', 'tt1833843', 'tt0113824', 'tt1568921', 'tt6336356',
-  'tt10362388', 'tt8306046', 'tt31018318'
+const ANIME_MOVIE_IDS = [
+  "tt0245429", "tt5311514", "tt5323662", "tt0119698", "tt0347149", "tt0094625", "tt0095327", "tt0096283",
+  "tt0156887", "tt0113568", "tt9095030", "tt16428256", "tt0169858", "tt0097814", "tt0092067", "tt0808506",
+  "tt2140510", "tt0845928", "tt11032374", "tt14308084", "tt0087544", "tt0104571", "tt2013293", "tt0876563",
+  "tt0983213", "tt2591814", "tt1483797", "tt1474261", "tt0388473", "tt0263306", "tt6587046", "tt16183464",
+  "tt7958640", "tt12287010", "tt7331818", "tt7232248", "tt1833843", "tt0113824", "tt1568921", "tt6336356",
+  "tt10362388", "tt8306046", "tt31018318",
 ];
 
-async function populateDB() {
-  console.log("Starting MASSIVE Database Extraction...");
-  
-  // 1. Fetch Anime Movies from OMDB dynamically
-  console.log(`Fetching ${animeMovieIDs.length} Anime Movies from OMDB...`);
-  for (let i = 0; i < animeMovieIDs.length; i += 10) {
-    const batch = animeMovieIDs.slice(i, i + 10);
-    const promises = batch.map(id => fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${id}`).then(r => r.json()).catch(() => null));
-    const results = await Promise.all(promises);
-    
-    results.forEach(res => {
-      if (res && res.Response === "True" && res.Poster && res.Poster !== 'N/A') {
-        animeMovies.push({
-          id: res.imdbID,
-          name: res.Title,
-          image: res.Poster,
-          banner: res.Poster,
-          genres: res.Genre?.split(', ') || ['Anime'],
-          rating: parseFloat(res.imdbRating) || 0,
-          summary: res.Plot || 'Deskripsi tidak tersedia.',
-          imdb: res.imdbID,
-          year: parseInt(res.Year) || 0,
-          type: 'movie'
-        });
-      }
-    });
-    await new Promise(r => setTimeout(r, 500)); // Rate limit safety
+function parseOmdbResponse(res: Record<string, string>, genreTag?: string): Show | null {
+  if (!res || res.Response !== "True" || !res.Poster || res.Poster === "N/A") {
+    return null;
   }
-  console.log(`Berhasil memuat ${animeMovies.length} Anime Movies spesial!`);
 
-  // 2. Fetch TV Series (15,000 shows from TVmaze)
-  console.log("Fetching 15,000+ TV Shows dari TVmaze...");
-  let tempDB: any[] = [];
-  const totalPages = 60; 
-  const batchSize = 10; 
+  const genres = res.Genre?.split(", ") || [];
+  if (genreTag && !genres.includes(genreTag)) {
+    genres.push(genreTag);
+  }
+
+  return {
+    id: res.imdbID,
+    name: res.Title,
+    image: res.Poster,
+    banner: res.Poster,
+    genres,
+    rating: parseFloat(res.imdbRating) || 0,
+    summary: res.Plot || "Deskripsi tidak tersedia.",
+    imdb: res.imdbID,
+    year: parseInt(res.Year) || 0,
+    type: "movie",
+  };
+}
+
+async function fetchOmdbById(id: string): Promise<Show | null> {
+  try {
+    const res = await fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${id}`);
+    return parseOmdbResponse(await res.json());
+  } catch (err) {
+    console.error(`OMDB fetch failed for ID "${id}":`, err);
+    return null;
+  }
+}
+
+async function fetchOmdbBySearch(
+  queries: string[],
+  pagesPerQuery: number,
+  genreTag?: string,
+  delayMs = 300,
+): Promise<void> {
+  for (const q of queries) {
+    for (let page = 1; page <= pagesPerQuery; page++) {
+      try {
+        const res = await fetch(
+          `http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=${q}&type=movie&page=${page}`,
+        );
+        const data = await res.json();
+        if (!data.Search) continue;
+
+        const details = await Promise.all(
+          data.Search.map((m: { imdbID: string }) => fetchOmdbById(m.imdbID)),
+        );
+
+        for (const show of details) {
+          if (!show) continue;
+          if (genreTag && !show.genres.includes(genreTag)) {
+            show.genres.push(genreTag);
+          }
+          moviesDB.set(show.imdb, show);
+        }
+
+        await new Promise((r) => setTimeout(r, delayMs));
+      } catch (err) {
+        console.error(`OMDB search failed for "${q}" page ${page}:`, err);
+      }
+    }
+  }
+}
+
+async function populateDB() {
+  console.log("Starting database population...");
+
+  // Seed anime movies by known IMDB IDs
+  console.log(`Fetching ${ANIME_MOVIE_IDS.length} anime movies from OMDB...`);
+  for (let i = 0; i < ANIME_MOVIE_IDS.length; i += 10) {
+    const batch = ANIME_MOVIE_IDS.slice(i, i + 10);
+    const results = await Promise.all(batch.map(fetchOmdbById));
+    for (const show of results) {
+      if (show) moviesDB.set(show.imdb, show);
+    }
+    await new Promise((r) => setTimeout(r, 500));
+  }
+  console.log(`Loaded ${moviesDB.size} anime movies.`);
+
+  // Fetch TV series from TVmaze
+  console.log("Fetching TV shows from TVmaze...");
+  const totalPages = 60;
+  const batchSize = 10;
 
   for (let i = 0; i < totalPages; i += batchSize) {
-    const batch = Array.from({ length: batchSize }, (_, k) => i + k);
-    console.log(`Mengunduh halaman ${batch[0]} hingga ${batch[batch.length - 1]}...`);
-    
+    const pageNumbers = Array.from({ length: batchSize }, (_, k) => i + k);
+    console.log(`Downloading pages ${pageNumbers[0]}-${pageNumbers[pageNumbers.length - 1]}...`);
+
     try {
-      const promises = batch.map(page => 
-        fetch(`${TVMAZE_API}/shows?page=${page}`)
-          .then(res => res.ok ? res.json() : [])
-          .catch(() => [])
+      const responses = await Promise.all(
+        pageNumbers.map((page) =>
+          fetch(`${TVMAZE_API}/shows?page=${page}`)
+            .then((res) => (res.ok ? res.json() : []))
+            .catch(() => []),
+        ),
       );
-      const results = await Promise.all(promises);
-      
-      results.flat().forEach((show: any) => {
-        // STRICT FILTERING: Must have valid medium image, summary, and IMDB ID!
-        if (show && show.image?.medium && show.externals?.imdb) {
-          const imgUrl = show.image.medium;
-          if (imgUrl.trim() !== '' && !imgUrl.includes('no-img')) {
-            tempDB.push({
-              id: show.id,
-              name: show.name,
-              image: imgUrl,
-              banner: show.image?.original || imgUrl,
-              genres: show.genres || [],
-              rating: show.rating?.average || 0,
-              summary: show.summary || 'Deskripsi tidak tersedia.',
-              imdb: show.externals.imdb,
-              year: show.premiered ? parseInt(show.premiered.substring(0,4)) : 0,
-              type: 'tv'
-            });
-          }
-        }
-      });
-      await new Promise(r => setTimeout(r, 1500));
-    } catch (e) {
-      console.error(`Error processing batch starting at page ${i}`);
+
+      for (const show of responses.flat()) {
+        const imgUrl = show?.image?.medium;
+        const imdb = show?.externals?.imdb;
+        if (!imgUrl || !imdb || imgUrl.trim() === "" || imgUrl.includes("no-img")) continue;
+
+        showsDB.push({
+          id: show.id,
+          name: show.name,
+          image: imgUrl,
+          banner: show.image?.original || imgUrl,
+          genres: show.genres || [],
+          rating: show.rating?.average || 0,
+          summary: show.summary || "Deskripsi tidak tersedia.",
+          imdb,
+          year: show.premiered ? parseInt(show.premiered.substring(0, 4)) : 0,
+          type: "tv",
+        });
+      }
+      await new Promise((r) => setTimeout(r, 1500));
+    } catch (err) {
+      console.error(`TVmaze batch failed starting at page ${i}:`, err);
     }
   }
 
-  // 3. Fetch Massive Horror Movies dynamically
-  console.log("Fetching Massive Horror Movies from OMDB...");
-  const queries = ['horror', 'scary', 'ghost', 'zombie', 'demon', 'vampire', 'slasher', 'paranormal'];
-  for (const q of queries) {
-    for (let page = 1; page <= 3; page++) { // 3 pages per query = ~240 horror movies total
-      try {
-        const res = await fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=${q}&type=movie&page=${page}`);
-        const data = await res.json();
-        if (data.Search) {
-          const promises = data.Search.map((m: any) => fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${m.imdbID}`).then(r => r.json()).catch(() => null));
-          const results = await Promise.all(promises);
-          results.forEach(res => {
-            if (res && res.Response === "True" && res.Poster && res.Poster !== 'N/A') {
-              let genres = res.Genre?.split(', ') || ['Horror'];
-              if (!genres.includes('Horror')) genres.push('Horror'); // Force Horror genre
-              
-              animeMovies.push({
-                id: res.imdbID,
-                name: res.Title,
-                image: res.Poster,
-                banner: res.Poster,
-                genres: genres,
-                rating: parseFloat(res.imdbRating) || 0,
-                summary: res.Plot || 'Deskripsi tidak tersedia.',
-                imdb: res.imdbID,
-                year: parseInt(res.Year) || 0,
-                type: 'movie'
-              });
-            }
-          });
-        }
-        await new Promise(r => setTimeout(r, 300));
-      } catch(e) {}
-    }
-  }
+  // Fetch horror movies via keyword search
+  console.log("Fetching horror movies from OMDB...");
+  await fetchOmdbBySearch(
+    ["horror", "scary", "ghost", "zombie", "demon", "vampire", "slasher", "paranormal"],
+    3,
+    "Horror",
+  );
 
-  // 4. Fetch Massive Indonesian Movies dynamically
-  console.log("Fetching Massive Indonesian Movies from OMDB...");
-  const indoQueries = ['pengabdi', 'kuntilanak', 'pocong', 'warkop', 'dilan', 'laskar', 'gundala', 'srimulat', 'habibie', 'merantau', 'raid', 'jailangkung', 'kkn', 'tuyul', 'suzzanna'];
-  for (const q of indoQueries) {
-    for (let page = 1; page <= 2; page++) {
-      try {
-        const res = await fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&s=${q}&type=movie&page=${page}`);
-        const data = await res.json();
-        if (data.Search) {
-          const promises = data.Search.map((m: any) => fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${m.imdbID}`).then(r => r.json()).catch(() => null));
-          const results = await Promise.all(promises);
-          results.forEach(res => {
-            if (res && res.Response === "True" && res.Poster && res.Poster !== 'N/A') {
-              let genres = res.Genre?.split(', ') || ['Drama'];
-              if (!genres.includes('Indonesian')) genres.push('Indonesian'); // Force Indonesian tag
-              
-              animeMovies.push({
-                id: res.imdbID,
-                name: res.Title,
-                image: res.Poster,
-                banner: res.Poster,
-                genres: genres,
-                rating: parseFloat(res.imdbRating) || 0,
-                summary: res.Plot || 'Deskripsi tidak tersedia.',
-                imdb: res.imdbID,
-                year: parseInt(res.Year) || 0,
-                type: 'movie'
-              });
-            }
-          });
-        }
-        await new Promise(r => setTimeout(r, 300));
-      } catch(e) {}
-    }
-  }
+  // Fetch Indonesian movies via keyword search
+  console.log("Fetching Indonesian movies from OMDB...");
+  await fetchOmdbBySearch(
+    [
+      "pengabdi", "kuntilanak", "pocong", "warkop", "dilan", "laskar", "gundala",
+      "srimulat", "habibie", "merantau", "raid", "jailangkung", "kkn", "tuyul", "suzzanna",
+    ],
+    2,
+    "Indonesian",
+  );
 
-  console.log(`Database populated successfully with ${tempDB.length} shows and ${animeMovies.length} movies!`);
-
-  showsDB = tempDB;
+  console.log(`Database ready: ${showsDB.length} TV shows, ${moviesDB.size} movies.`);
   dbReady = true;
 }
+
 populateDB();
+
+const ITEMS_PER_PAGE = 40;
+const MAX_CATEGORY_SIZE = 50;
+const UNKNOWN = "Tidak diketahui";
+
+function sortByRating(arr: Show[]): Show[] {
+  return [...arr].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+}
+
+function getAllContent(): Show[] {
+  return [...Array.from(moviesDB.values()), ...showsDB];
+}
 
 const app = new Elysia()
   .use(cors())
-  .get("/", () => "Elysia Streaming API is running!")
-  
+  .get("/", () => "Elysia Streaming API is running.")
+
   .get("/api/explore", ({ query }) => {
-    if (!dbReady || showsDB.length === 0) return { error: "Sedang mengunduh data..." };
-    
-    let results = [...animeMovies, ...showsDB];
-    
-    // Filter by Genre
-    if (query.genre && query.genre !== 'All') {
-      results = results.filter(s => s.genres.includes(query.genre));
+    if (!dbReady || showsDB.length === 0) {
+      return { error: "Data sedang dimuat, silakan coba lagi." };
     }
-    
-    // Filter by Year
-    if (query.year && query.year !== 'All') {
-      results = results.filter(s => s.year === parseInt(query.year!));
+
+    let results = getAllContent();
+
+    if (query.genre && query.genre !== "All") {
+      results = results.filter((s) => s.genres.includes(query.genre!));
     }
-    
-    // Sorting
-    if (query.sort === 'az') {
-      results.sort((a, b) => a.name.localeCompare(b.name));
-    } else if (query.sort === 'za') {
-      results.sort((a, b) => b.name.localeCompare(a.name));
-    } else if (query.sort === 'newest') {
-      results.sort((a, b) => (b.year || 0) - (a.year || 0));
-    } else if (query.sort === 'oldest') {
-      results.sort((a, b) => (a.year || 9999) - (b.year || 9999));
-    } else {
-      // Default: Highest Rated
-      results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+
+    if (query.year && query.year !== "All") {
+      const yearNum = parseInt(query.year);
+      results = results.filter((s) => s.year === yearNum);
     }
-    
-    // Pagination
-    const page = parseInt(query.page || '1');
-    const limit = 40;
-    const startIndex = (page - 1) * limit;
-    
+
+    switch (query.sort) {
+      case "az":
+        results.sort((a, b) => a.name.localeCompare(b.name));
+        break;
+      case "za":
+        results.sort((a, b) => b.name.localeCompare(a.name));
+        break;
+      case "newest":
+        results.sort((a, b) => (b.year || 0) - (a.year || 0));
+        break;
+      case "oldest":
+        results.sort((a, b) => (a.year || 9999) - (b.year || 9999));
+        break;
+      default:
+        results.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    }
+
+    const page = parseInt(query.page || "1");
+    const startIndex = (page - 1) * ITEMS_PER_PAGE;
+
     return {
       total: results.length,
       page,
-      totalPages: Math.ceil(results.length / limit),
-      data: results.slice(startIndex, startIndex + limit)
+      totalPages: Math.ceil(results.length / ITEMS_PER_PAGE),
+      data: results.slice(startIndex, startIndex + ITEMS_PER_PAGE),
     };
   }, {
     query: t.Object({
       genre: t.Optional(t.String()),
       year: t.Optional(t.String()),
       sort: t.Optional(t.String()),
-      page: t.Optional(t.String())
-    })
+      page: t.Optional(t.String()),
+    }),
   })
 
-  .get("/api/details", async ({ query }) => {
+  .get("/api/details", async ({ query }): Promise<ShowDetails> => {
     try {
-      if (query.type === 'movie') {
+      if (query.type === "movie") {
         const res = await fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${query.imdb}`);
         const data = await res.json();
         return {
-          cast: data.Actors && data.Actors !== 'N/A' ? data.Actors : 'Tidak diketahui',
-          director: data.Director && data.Director !== 'N/A' ? data.Director : 'Tidak diketahui'
-        };
-      } else {
-        const res = await fetch(`${TVMAZE_API}/shows/${query.id}?embed=cast&embed=crew&embed=episodes`);
-        const data = await res.json();
-        
-        let cast = data._embedded?.cast?.slice(0, 5).map((c: any) => c.person.name).join(', ') || 'Tidak diketahui';
-        let creator = data._embedded?.crew?.filter((c: any) => c.type === 'Creator' || c.type === 'Executive Producer')
-                          .slice(0, 3).map((c: any) => c.person.name).join(', ') || 'Tidak diketahui';
-        
-        // Extract seasons and episodes from TVmaze
-        let seasonsData = {};
-        if (data._embedded?.episodes) {
-          data._embedded.episodes.forEach((ep: any) => {
-            if (!seasonsData[ep.season]) {
-              seasonsData[ep.season] = [];
-            }
-            seasonsData[ep.season].push({
-              number: ep.number,
-              name: ep.name
-            });
-          });
-        }
-        
-        // OMDB Fallback Hack for missing TVmaze data
-        if ((cast === 'Tidak diketahui' || creator === 'Tidak diketahui' || cast.length < 3) && query.imdb && query.imdb !== 'null') {
-           try {
-             const omdbRes = await fetch(`http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${query.imdb}`);
-             const omdbData = await omdbRes.json();
-             
-             if ((cast === 'Tidak diketahui' || cast.length < 3) && omdbData.Actors && omdbData.Actors !== 'N/A') {
-                cast = omdbData.Actors;
-             }
-             if ((creator === 'Tidak diketahui' || creator.length < 3) && omdbData.Writer && omdbData.Writer !== 'N/A') {
-                creator = omdbData.Writer; 
-             } else if ((creator === 'Tidak diketahui' || creator.length < 3) && omdbData.Director && omdbData.Director !== 'N/A') {
-                creator = omdbData.Director;
-             }
-           } catch (e) {}
-        }
-                          
-        return {
-          cast: cast.length > 2 ? cast : 'Tidak diketahui',
-          director: creator.length > 2 ? creator : 'Tidak diketahui',
-          network: data.network?.name || data.webChannel?.name || 'Tidak diketahui',
-          seasons: seasonsData
+          cast: data.Actors && data.Actors !== "N/A" ? data.Actors : UNKNOWN,
+          director: data.Director && data.Director !== "N/A" ? data.Director : UNKNOWN,
         };
       }
-    } catch (e) {
-      return { cast: 'Tidak diketahui', director: 'Tidak diketahui' };
+
+      const res = await fetch(
+        `${TVMAZE_API}/shows/${query.id}?embed=cast&embed=crew&embed=episodes`,
+      );
+      const data = await res.json();
+
+      let cast =
+        data._embedded?.cast
+          ?.slice(0, 5)
+          .map((c: { person: { name: string } }) => c.person.name)
+          .join(", ") || UNKNOWN;
+
+      let creator =
+        data._embedded?.crew
+          ?.filter((c: { type: string }) => c.type === "Creator" || c.type === "Executive Producer")
+          .slice(0, 3)
+          .map((c: { person: { name: string } }) => c.person.name)
+          .join(", ") || UNKNOWN;
+
+      const seasonsData: Record<number, Episode[]> = {};
+      if (data._embedded?.episodes) {
+        for (const ep of data._embedded.episodes) {
+          if (!seasonsData[ep.season]) seasonsData[ep.season] = [];
+          seasonsData[ep.season].push({ number: ep.number, name: ep.name });
+        }
+      }
+
+      // Supplement missing TVmaze metadata from OMDB
+      const hasMissingData =
+        (cast === UNKNOWN || cast.length < 3 || creator === UNKNOWN) &&
+        query.imdb &&
+        query.imdb !== "null";
+
+      if (hasMissingData) {
+        try {
+          const omdbRes = await fetch(
+            `http://www.omdbapi.com/?apikey=${OMDB_API_KEY}&i=${query.imdb}`,
+          );
+          const omdb = await omdbRes.json();
+
+          if ((cast === UNKNOWN || cast.length < 3) && omdb.Actors && omdb.Actors !== "N/A") {
+            cast = omdb.Actors;
+          }
+          if (creator === UNKNOWN || creator.length < 3) {
+            if (omdb.Writer && omdb.Writer !== "N/A") {
+              creator = omdb.Writer;
+            } else if (omdb.Director && omdb.Director !== "N/A") {
+              creator = omdb.Director;
+            }
+          }
+        } catch (err) {
+          console.error(`OMDB fallback failed for "${query.imdb}":`, err);
+        }
+      }
+
+      return {
+        cast: cast.length > 2 ? cast : UNKNOWN,
+        director: creator.length > 2 ? creator : UNKNOWN,
+        network: data.network?.name || data.webChannel?.name || UNKNOWN,
+        seasons: seasonsData,
+      };
+    } catch (err) {
+      console.error("Details fetch failed:", err);
+      return { cast: UNKNOWN, director: UNKNOWN };
     }
   }, {
     query: t.Object({
       id: t.String(),
       imdb: t.String(),
-      type: t.String()
-    })
+      type: t.String(),
+    }),
   })
 
   .get("/api/home", () => {
     if (!dbReady || showsDB.length === 0) {
-      return { error: "Sedang mengunduh 15.000+ data film ke dalam sistem, mohon tunggu beberapa detik lalu coba lagi... 🚀" };
+      return { error: "Data sedang dimuat, silakan coba lagi." };
     }
 
-    const allData = [...showsDB, ...animeMovies];
-    const sortByRating = (arr: any[]) => [...arr].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+    const allData = getAllContent();
+    const byGenre = (genre: string) => sortByRating(allData.filter((s) => s.genres.includes(genre)));
 
-    // Create massive categories (up to 1000 items each!)
-    const animeSeries = sortByRating(allData.filter(s => s.genres.includes("Anime")));
-    const cartoonSeries = sortByRating(allData.filter(s => 
-      s.genres.includes("Children") || s.genres.includes("Family") || (s.genres.includes("Animation") && !s.genres.includes("Anime"))
-    ));
-    const realityShows = sortByRating(allData.filter(s => s.genres.includes("Reality") || s.genres.includes("DIY") || s.genres.includes("Food") || s.genres.includes("Travel")));
-    const trending = sortByRating(allData); // Highest rated of ALL TIME
-    const actionSeries = sortByRating(allData.filter(s => s.genres.includes("Action") || s.genres.includes("Adventure")));
-    const comedySeries = sortByRating(allData.filter(s => s.genres.includes("Comedy")));
-    
-    const horror = sortByRating(allData.filter(s => s.genres.includes("Horror") || s.genres.includes("Thriller")));
-    const scifi = sortByRating(allData.filter(s => s.genres.includes("Science-Fiction")));
-    const romanceDrama = sortByRating(allData.filter(s => s.genres.includes("Romance") || s.genres.includes("Drama")));
-    const indonesian = sortByRating(allData.filter(s => s.genres.includes("Indonesian")));
+    const trending = sortByRating(allData);
+    const heroPool = trending.slice(0, 20);
 
     return {
-      hero: trending[Math.floor(Math.random() * 20)], // Random hero from top 20
+      hero: heroPool[Math.floor(Math.random() * heroPool.length)],
       categories: [
-        { title: "Trending Now", data: trending.slice(0, 1000) },
-        { title: "Sinema Indonesia", data: indonesian.slice(0, 1000) },
-        { title: "Horror & Thriller", data: horror.slice(0, 1000) },
-        { title: "Anime & Animation", data: animeSeries.slice(0, 1000) },
-        { title: "Family & Kids", data: cartoonSeries.slice(0, 1000) },
-        { title: "Reality & Lifestyle", data: realityShows.slice(0, 1000) },
-        { title: "Action & Adventure", data: actionSeries.slice(0, 1000) },
-        { title: "Science Fiction", data: scifi.slice(0, 1000) },
-        { title: "Romance & Drama", data: romanceDrama.slice(0, 1000) },
-        { title: "Comedy", data: comedySeries.slice(0, 1000) }
-      ]
+        { title: "Trending Now", data: trending.slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Sinema Indonesia", data: byGenre("Indonesian").slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Horror & Thriller", data: sortByRating(allData.filter((s) => s.genres.includes("Horror") || s.genres.includes("Thriller"))).slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Anime & Animation", data: byGenre("Anime").slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Family & Kids", data: sortByRating(allData.filter((s) => s.genres.includes("Children") || s.genres.includes("Family") || (s.genres.includes("Animation") && !s.genres.includes("Anime")))).slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Reality & Lifestyle", data: sortByRating(allData.filter((s) => s.genres.includes("Reality") || s.genres.includes("DIY") || s.genres.includes("Food") || s.genres.includes("Travel"))).slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Action & Adventure", data: sortByRating(allData.filter((s) => s.genres.includes("Action") || s.genres.includes("Adventure"))).slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Science Fiction", data: byGenre("Science-Fiction").slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Romance & Drama", data: sortByRating(allData.filter((s) => s.genres.includes("Romance") || s.genres.includes("Drama"))).slice(0, MAX_CATEGORY_SIZE) },
+        { title: "Comedy", data: byGenre("Comedy").slice(0, MAX_CATEGORY_SIZE) },
+      ],
     };
   })
 
   .get("/api/search", async ({ query }) => {
-    try {
-      if (!query.q) return [];
-      const response = await fetch(`${TVMAZE_API}/search/shows?q=${query.q}`);
-      if (!response.ok) throw new Error("Failed to fetch from TVmaze");
-      const data = await response.json();
-      
-      const results = data.map((item: any) => ({
-        id: item.show.id,
-        name: item.show.name,
-        image: item.show.image?.medium || item.show.image?.original || null,
-        banner: item.show.image?.original || null,
-        genres: item.show.genres,
-        rating: item.show.rating?.average,
-        summary: item.show.summary || 'Deskripsi tidak tersedia.',
-        imdb: item.show.externals?.imdb || null,
-        type: 'tv'
-      })).filter((s: any) => s.image && s.imdb);
+    if (!query.q) return [];
 
-      const manualMatches = animeMovies.filter(a => a.name.toLowerCase().includes(query.q!.toLowerCase()));
-      return [...manualMatches, ...results];
-    } catch (error: any) {
-      return { error: error.message };
+    try {
+      const response = await fetch(`${TVMAZE_API}/search/shows?q=${query.q}`);
+      if (!response.ok) throw new Error("TVmaze search request failed");
+      const data = await response.json();
+
+      const tvResults: Show[] = data
+        .map((item: { show: Record<string, any> }) => ({
+          id: item.show.id,
+          name: item.show.name,
+          image: item.show.image?.medium || item.show.image?.original || null,
+          banner: item.show.image?.original || null,
+          genres: item.show.genres,
+          rating: item.show.rating?.average,
+          summary: item.show.summary || "Deskripsi tidak tersedia.",
+          imdb: item.show.externals?.imdb || null,
+          type: "tv" as const,
+        }))
+        .filter((s: Show) => s.image && s.imdb);
+
+      const searchTerm = query.q.toLowerCase();
+      const movieMatches = Array.from(moviesDB.values()).filter((m) =>
+        m.name.toLowerCase().includes(searchTerm),
+      );
+
+      return [...movieMatches, ...tvResults];
+    } catch (err) {
+      console.error("Search failed:", err);
+      return { error: (err as Error).message };
     }
   }, {
     query: t.Object({
-      q: t.Optional(t.String())
-    })
+      q: t.Optional(t.String()),
+    }),
   })
 
   .listen(3000);
 
-console.log(`Elysia Streaming Backend running at http://${app.server?.hostname}:${app.server?.port}`);
+console.log(`Backend running at http://${app.server?.hostname}:${app.server?.port}`);
