@@ -372,7 +372,7 @@ const app = new Elysia()
   })
 
   .get("/api/search", async ({ query }) => {
-    if (!query.q) return [];
+    if (!query.q) return { results: [], suggestions: [] };
 
     try {
       const response = await fetch(`${TVMAZE_API}/search/shows?q=${query.q}`);
@@ -398,7 +398,35 @@ const app = new Elysia()
         m.name.toLowerCase().includes(searchTerm),
       );
 
-      return [...movieMatches, ...tvResults];
+      const results = [...movieMatches, ...tvResults];
+      
+      let suggestions: Show[] = [];
+      if (results.length === 0) {
+         const words = searchTerm.split(/\s+/).filter((w: string) => w.length > 2);
+         const allContent = getAllContent();
+         
+         if (words.length > 0) {
+             const scored = allContent.map(s => {
+                 let score = 0;
+                 const nameLower = s.name.toLowerCase();
+                 words.forEach((w: string) => {
+                     if (nameLower.includes(w)) score += 5;
+                     if (s.genres.some(g => g.toLowerCase().includes(w))) score += 3;
+                     if (s.summary.toLowerCase().includes(w)) score += 1;
+                 });
+                 return { item: s, score };
+             }).filter(s => s.score > 0);
+             
+             scored.sort((a, b) => b.score - a.score || (b.item.rating || 0) - (a.item.rating || 0));
+             suggestions = scored.map(s => s.item).slice(0, 12);
+         }
+         
+         if (suggestions.length === 0) {
+             suggestions = sortByRating(allContent).slice(0, 12);
+         }
+      }
+
+      return { results, suggestions };
     } catch (err) {
       console.error("Search failed:", err);
       return { error: (err as Error).message };

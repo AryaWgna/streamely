@@ -9,6 +9,7 @@
   
   let searchQuery = '';
   let searchResults = [];
+  let searchSuggestions = [];
   let isSearching = false;
 
   // Explore State
@@ -179,23 +180,53 @@
     }
   }
 
-  async function handleSearch(e) {
-    e.preventDefault();
-    if (!searchQuery.trim()) {
-      currentView = 'home';
-      return;
+  let searchTimeout;
+
+  function handleQueryChange(query) {
+    clearTimeout(searchTimeout);
+    if (query.trim().length > 0) {
+      searchTimeout = setTimeout(() => {
+        triggerSearch(query);
+      }, 500);
+    } else {
+      if (currentView === 'search') {
+        currentView = 'home';
+        searchResults = [];
+        searchSuggestions = [];
+      }
     }
-    
+  }
+
+  $: handleQueryChange(searchQuery);
+
+  async function triggerSearch(queryToSearch = searchQuery) {
     currentView = 'search';
     isSearching = true;
     try {
-      const res = await fetch(`/api/search?q=${searchQuery}`);
-      searchResults = await res.json();
+      const res = await fetch(`/api/search?q=${queryToSearch}`);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        searchResults = data;
+        searchSuggestions = [];
+      } else if (data.results) {
+        searchResults = data.results;
+        searchSuggestions = data.suggestions || [];
+      }
     } catch (err) {
       console.error(err);
     } finally {
       isSearching = false;
     }
+  }
+
+  async function handleSearch(e) {
+    if (e) e.preventDefault();
+    if (!searchQuery.trim()) {
+      currentView = 'home';
+      return;
+    }
+    clearTimeout(searchTimeout);
+    triggerSearch();
   }
 
   let previousView = 'home';
@@ -548,9 +579,26 @@
             <div class="shimmer-card"></div><div class="shimmer-card"></div><div class="shimmer-card"></div><div class="shimmer-card"></div>
           </div>
         {:else if searchResults.length === 0}
-          <div class="no-results">
-            <p>No titles matched your search.</p>
+          <div class="no-results" style="margin-bottom: 2rem;">
+            <p>Pencarian untuk "{searchQuery}" tidak ditemukan.</p>
           </div>
+          {#if searchSuggestions.length > 0}
+            <h3 style="margin-bottom: 1.5rem;">Mungkin Kamu Suka Ini</h3>
+            <div class="grid-layout">
+              {#each searchSuggestions as item}
+                <div class="card" on:click={() => openModal(item)}>
+                  <img src={item.image} alt={item.name} loading="lazy" on:error={(e) => e.target.src = FALLBACK_POSTER} />
+                  <div class="card-overlay">
+                    <span class="card-rating">{@html StarIcon} {item.rating || 'N/A'}</span>
+                    <h4>{item.name}</h4>
+                    <button class="card-wl-btn {isInWatchlist(item.id) ? 'active' : ''}" on:click={(e) => toggleWatchlist(item, e)}>
+                      {@html isInWatchlist(item.id) ? CheckIcon : PlusIcon}
+                    </button>
+                  </div>
+                </div>
+              {/each}
+            </div>
+          {/if}
         {:else}
           <div class="grid-layout">
             {#each searchResults as item}
@@ -579,7 +627,7 @@
         <div class="watch-page-video">
           <div class="video-wrapper">
             {#if isPlaying}
-              <iframe src={videoSource} frameborder="0" allowfullscreen></iframe>
+              <iframe src={videoSource} frameborder="0" allowfullscreen allow="autoplay; fullscreen"></iframe>
             {:else}
               <div class="modal-cover" style="background-image: url('{activeVideo.banner || activeVideo.image}')">
                 <div class="modal-cover-overlay"></div>
