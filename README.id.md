@@ -49,6 +49,19 @@ StreamEly adalah platform *video-on-demand* (VOD) ringan yang dirancang untuk pe
 
 3. **Akses Aplikasi**
    Buka `https://streamely.local` di peramban (abaikan peringatan sertifikat *self-signed*).
+   *(Sebagai alternatif, Anda juga dapat mengakses proxy secara langsung di `http://localhost:8000`)*
+
+## Akses Publik (Cloudflare Tunnel)
+
+Proxy StreamEly sudah dikonfigurasi secara khusus agar aman dari konflik encoding saat dihubungkan melalui Cloudflare Tunnel (mencegah error `ERR_CONTENT_DECODING_FAILED`). Untuk mengekspos web lokal Anda ke internet:
+
+1. Instal [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/).
+2. Jalankan perintah *quick tunnel* dan arahkan ke port proxy (8000):
+   ```bash
+   cloudflared tunnel --url http://localhost:8000
+   ```
+3. Bagikan dan buka aplikasi Anda menggunakan tautan `trycloudflare.com` yang muncul di terminal.
+
 
 ## Daemon Latar Belakang (PM2)
 
