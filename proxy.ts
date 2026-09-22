@@ -1,46 +1,54 @@
 import { readFileSync } from 'fs';
 
-const PORT = 443;
+const PORT = 8000;
 const VITE_URL = 'http://localhost:5173';
 const BACKEND_URL = 'http://localhost:3000';
 
 console.log(`Reverse proxy running on port ${PORT}`);
-console.log(`Route: https://streamely.local/ -> ${VITE_URL}`);
-console.log(`Route: https://streamely.local/api/* -> ${BACKEND_URL}/api/*`);
+console.log(`Route: http://localhost:8000/ -> ${VITE_URL}`);
+console.log(`Route: http://localhost:8000/api/* -> ${BACKEND_URL}/api/*`);
 
-// Main HTTPS Reverse Proxy
+async function forwardRequest(req, targetBaseUrl, isApi) {
+  const url = new URL(req.url);
+  const targetUrl = new URL(url.pathname + url.search, targetBaseUrl);
+  
+  const newHeaders = new Headers(req.headers);
+  newHeaders.set('Host', 'localhost');
+  newHeaders.delete('accept-encoding');
+
+  try {
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers: newHeaders,
+      body: req.method !== 'GET' && req.method !== 'HEAD' ? await req.blob() : undefined
+    });
+
+    // Strip content-encoding because Bun automatically decompresses the body 
+    // but leaves the header, causing ERR_CONTENT_DECODING_FAILED in browsers
+    const proxyHeaders = new Headers(response.headers);
+    proxyHeaders.delete('content-encoding');
+
+    return new Response(response.body, {
+      status: response.status,
+      statusText: response.statusText,
+      headers: proxyHeaders
+    });
+  } catch (e) {
+    if (isApi) {
+      return new Response('API is not running.', { status: 502 });
+    }
+    return new Response('StreamEly Frontend (Vite) is not running.', { status: 502 });
+  }
+}
+
+// Main HTTP Reverse Proxy
 Bun.serve({
   port: PORT,
-  tls: {
-    cert: readFileSync('cert.crt'),
-    key: readFileSync('key.pem'),
-  },
   async fetch(req) {
     const url = new URL(req.url);
-
-    const newHeaders = new Headers(req.headers);
-    newHeaders.set('Host', 'localhost');
-
-    // API Gateway Logic (Reverse Proxy for Backend)
     if (url.pathname.startsWith('/api/')) {
-      const targetUrl = new URL(url.pathname + url.search, BACKEND_URL);
-      return fetch(targetUrl, {
-        method: req.method,
-        headers: newHeaders,
-        body: req.method !== 'GET' && req.method !== 'HEAD' ? await req.blob() : undefined
-      });
+      return forwardRequest(req, BACKEND_URL, true);
     }
-
-    // Frontend Proxy (Reverse Proxy for Vite)
-    const targetUrl = new URL(url.pathname + url.search, VITE_URL);
-    try {
-      return await fetch(targetUrl, {
-        method: req.method,
-        headers: newHeaders,
-        body: req.method !== 'GET' && req.method !== 'HEAD' ? await req.blob() : undefined
-      });
-    } catch (e) {
-      return new Response('StreamEly Frontend (Vite) is not running.', { status: 502 });
-    }
+    return forwardRequest(req, VITE_URL, false);
   },
 });

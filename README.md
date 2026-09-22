@@ -24,6 +24,7 @@ StreamEly is a self-hosted, lightweight video-on-demand (VOD) platform. It aggre
 - **Fallback Heuristics**: Proxies missing TVmaze cast/crew metadata to OMDB dynamically.
 - **Client-Side Processing**: Implements local pagination, genre filtering, and Jaccard-index based recommendations.
 - **Proxy Gateway**: Custom HTTPS local domain routing (`streamely.local`) bypassing Vite HMR limitations.
+- **Cloudflare Tunnel Ready**: Robust proxy logic stripping double-compression headers (prevents `ERR_CONTENT_DECODING_FAILED`).
 - **State Persistence**: Syncs watch history and bookmarks via `localStorage`.
 
 ## Local Development

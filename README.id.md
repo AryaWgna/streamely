@@ -24,6 +24,7 @@ StreamEly adalah platform *video-on-demand* (VOD) ringan yang dirancang untuk pe
 - **Heuristik Fallback**: Mem-proksi metadata pemeran/kru TVmaze yang hilang ke OMDB secara dinamis.
 - **Pemrosesan Sisi Klien**: Mengimplementasikan *pagination* lokal, penyaringan genre, dan rekomendasi berbasis *Jaccard-index*.
 - **Proxy Gateway**: Perutean domain lokal HTTPS kustom (`streamely.local`) yang mengabaikan limitasi Vite HMR.
+- **Kompatibel Cloudflare Tunnel**: Logika proxy yang kokoh dengan penghapusan header kompresi ganda (mencegah error `ERR_CONTENT_DECODING_FAILED`).
 - **Persistensi State**: Menyinkronkan riwayat tontonan dan markah via `localStorage`.
 
 ## Pengembangan Lokal
