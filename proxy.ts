@@ -44,6 +44,7 @@ async function forwardRequest(req, targetBaseUrl, isApi) {
 // Main HTTP Reverse Proxy
 Bun.serve({
   port: PORT,
+  hostname: "0.0.0.0",
   async fetch(req) {
     const url = new URL(req.url);
     if (url.pathname.startsWith('/api/')) {

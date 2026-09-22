@@ -23,9 +23,10 @@ StreamEly is a self-hosted, lightweight video-on-demand (VOD) platform. It aggre
 - **Concurrent Ingestion**: Bootstraps 15,000+ entries into an in-memory cache during startup.
 - **Fallback Heuristics**: Proxies missing TVmaze cast/crew metadata to OMDB dynamically.
 - **Client-Side Processing**: Implements local pagination, genre filtering, and Jaccard-index based recommendations.
-- **Proxy Gateway**: Custom HTTPS local domain routing (`streamely.local`) bypassing Vite HMR limitations.
+- **Proxy Gateway**: Custom HTTPS local domain routing (`streamely.local`) bypassing Vite HMR limitations. Binds on `0.0.0.0` for external network access.
 - **Cloudflare Tunnel Ready**: Robust proxy logic stripping double-compression headers (prevents `ERR_CONTENT_DECODING_FAILED`).
 - **State Persistence**: Syncs watch history and bookmarks via `localStorage`.
+- **Multi-Server Player**: Switch between multiple embed servers (VidSrc, MultiEmbed, 2Embed) on the watch page.
 
 ## Local Development
 
@@ -65,24 +66,43 @@ StreamEly's proxy is pre-configured to safely handle Cloudflare Tunnel encoding 
 
 ## Background Daemon (PM2)
 
-For persistent background execution:
+PM2 runs each service as a separate managed process for better isolation and independent restarts.
 
 ```bash
 npm install -g pm2
 pm2 start ecosystem.config.js
 ```
 
+This spawns three processes:
+| Process | What it runs |
+|---|---|
+| `StreamEly-Backend` | `bun run src/index.ts` in `./backend` |
+| `StreamEly-Frontend` | `vite preview --port 5173 --host` in `./frontend` |
+| `StreamEly-Proxy` | `bun run proxy.ts` in project root |
+
 To monitor or manage the daemon:
 ```bash
 # View real-time application logs
-pm2 logs StreamEly
+pm2 logs
 
-# Restart the application
-pm2 restart StreamEly
+# Restart all services
+pm2 restart all
 
-# Stop the application
-pm2 stop StreamEly
+# Stop all services
+pm2 stop all
 
-# Remove the application from PM2
-pm2 delete StreamEly
+# Remove all services from PM2
+pm2 delete all
 ```
+
+### Standalone Service Runner (No PM2)
+
+If you prefer not to install PM2, use the built-in service runner. It manages all three processes with automatic restart on crash:
+
+```bash
+node service.js
+```
+
+## License
+
+This project is for personal/educational use only.
